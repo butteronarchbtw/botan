@@ -885,6 +885,10 @@ void ASBlocks::ASIdentifiers::encode_into(Botan::DER_Encoder& into) const {
 }
 
 void ASBlocks::ASIdentifiers::decode_from(Botan::BER_Decoder& from) {
+   //from.start_sequence()
+   //   .decode_optional(m_asnum, ASN1_Type(0), ASN1_Class::ExplicitContextSpecific)
+   //   .decode_optional(m_rdi, ASN1_Type(1), ASN1_Class::ExplicitContextSpecific)
+   //   .end_cons();
    BER_Object obj = from.get_next_object();
    ASN1_Type type_tag = obj.type_tag();
    if(type_tag != ASN1_Type::Sequence) {
