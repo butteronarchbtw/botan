@@ -1860,19 +1860,19 @@ Test::Result test_x509_ip_addr_blocks_extension_encode() {
 
       auto ipv4_addr_choice = IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv4>();
       if(!inherit_ipv4) {
-         ipv4_addr_choice.set_range(ipv4_ranges);
+         ipv4_addr_choice = IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv4>(ipv4_ranges);
       }
 
       auto ipv6_addr_choice = IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv6>();
       if(!inherit_ipv6) {
-         ipv6_addr_choice.set_range(ipv6_ranges);
+         ipv6_addr_choice = IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv6>(ipv6_ranges);
       }
 
-      std::vector<uint8_t> afi = {0, 1};
-      auto ipv4_addr_family = IPAddressBlocks::IPAddressFamily(std::span(afi), ipv4_addr_choice);
+      uint16_t afi = 1;
+      auto ipv4_addr_family = IPAddressBlocks::IPAddressFamily(afi, ipv4_addr_choice);
 
-      afi = {0, 2};
-      auto ipv6_addr_family = IPAddressBlocks::IPAddressFamily(std::span(afi), ipv6_addr_choice);
+      afi = 2;
+      auto ipv6_addr_family = IPAddressBlocks::IPAddressFamily(afi, ipv6_addr_choice);
 
       std::vector<IPAddressBlocks::IPAddressFamily> addr_blocks;
       if(push_ipv4_family) {
@@ -1882,8 +1882,7 @@ Test::Result test_x509_ip_addr_blocks_extension_encode() {
          addr_blocks.push_back(ipv6_addr_family);
       }
 
-      std::unique_ptr<IPAddressBlocks> blocks = std::make_unique<IPAddressBlocks>();
-      blocks->set_addr_blocks(addr_blocks);
+      std::unique_ptr<IPAddressBlocks> blocks = std::make_unique<IPAddressBlocks>(addr_blocks);
 
       opts1.extensions.add(std::move(blocks));
 
@@ -1901,7 +1900,8 @@ Test::Result test_x509_ip_addr_blocks_extension_encode() {
 
          if(push_ipv4_family) {
             auto family = dec_addr_blocks[0];
-            result.confirm("ipv4 family afi", ipv4_addr_family.addr_family() == family.addr_family(), true);
+            result.confirm("ipv4 family afi", ipv4_addr_family.afi() == family.afi(), true);
+            result.confirm("ipv4 family safi", ipv4_addr_family.safi() == family.safi(), true);
             auto choice =
                std::get<IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv4>>(family.addr_choice());
 
@@ -1926,7 +1926,8 @@ Test::Result test_x509_ip_addr_blocks_extension_encode() {
 
          if(push_ipv6_family) {
             auto family = dec_addr_blocks[dec_addr_blocks.size() - 1];
-            result.confirm("ipv6 family afi", ipv6_addr_family.addr_family() == family.addr_family(), true);
+            result.confirm("ipv6 family afi", ipv6_addr_family.afi() == family.afi(), true);
+            result.confirm("ipv6 family safi", ipv6_addr_family.safi() == family.safi(), true);
             auto choice =
                std::get<IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv6>>(family.addr_choice());
             if(!inherit_ipv6) {
@@ -1997,17 +1998,14 @@ Test::Result test_x509_ip_addr_blocks_extension_encode_edge_cases() {
          std::vector<IPAddressBlocks::IPAddressOrRange<IPAddressBlocks::Version::IPv6>> ipv6_ranges;
          ipv6_ranges.push_back(ipv6_range);
 
-         auto ipv6_addr_choice = IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv6>();
-         ipv6_addr_choice.set_range(ipv6_ranges);
+         auto ipv6_addr_choice = IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv6>(ipv6_ranges);
 
-         std::vector<uint8_t> afi = {0, 2};
-         auto ipv6_addr_family = IPAddressBlocks::IPAddressFamily(afi, ipv6_addr_choice);
+         auto ipv6_addr_family = IPAddressBlocks::IPAddressFamily(2, ipv6_addr_choice);
 
          std::vector<IPAddressBlocks::IPAddressFamily> addr_blocks;
          addr_blocks.push_back(ipv6_addr_family);
 
-         std::unique_ptr<IPAddressBlocks> blocks = std::make_unique<IPAddressBlocks>();
-         blocks->set_addr_blocks(addr_blocks);
+         std::unique_ptr<IPAddressBlocks> blocks = std::make_unique<IPAddressBlocks>(addr_blocks);
 
          opts1.extensions.add(std::move(blocks));
 
@@ -2018,7 +2016,8 @@ Test::Result test_x509_ip_addr_blocks_extension_encode_edge_cases() {
             result.confirm("cert has IPAddrBlocks extension", ip_blocks != nullptr, true);
             const auto& dec_addr_blocks = ip_blocks->addr_blocks();
             auto family = dec_addr_blocks[0];
-            result.confirm("ipv6 family afi", ipv6_addr_family.addr_family() == family.addr_family(), true);
+            result.confirm("ipv6 family afi", ipv6_addr_family.afi() == family.afi(), true);
+            result.confirm("ipv6 family safi", ipv6_addr_family.safi() == family.safi(), true);
             auto choice =
                std::get<IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv6>>(family.addr_choice());
             auto ranges = choice.range().value();

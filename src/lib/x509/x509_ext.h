@@ -624,7 +624,9 @@ class BOTAN_PUBLIC_API(3, 7) IPAddressBlocks final : public Certificate_Extensio
 
             const std::optional<std::vector<IPAddressOrRange<V>>>& range() const { return m_ip_addr_ranges; }
 
-            void set_range(const std::optional<std::vector<IPAddressOrRange<V>>>& range) { m_ip_addr_ranges = range; }
+            IPAddressChoice() = default;
+
+            IPAddressChoice(const std::vector<IPAddressOrRange<V>>& ranges) : m_ip_addr_ranges(ranges) {}
 
          private:
             std::optional<std::vector<IPAddressOrRange<V>>> m_ip_addr_ranges;
@@ -637,21 +639,34 @@ class BOTAN_PUBLIC_API(3, 7) IPAddressBlocks final : public Certificate_Extensio
 
             IPAddressFamily() = default;
 
-            IPAddressFamily(std::span<uint8_t> addr_family,
-                            const std::variant<IPAddressChoice<Version::IPv4>, IPAddressChoice<Version::IPv6>>& choice);
+            IPAddressFamily(
+               uint16_t afi,
+               const std::variant<IPAddressChoice<Version::IPv4>, IPAddressChoice<Version::IPv6>>& choice) :
+                  m_afi(afi), m_ip_addr_choice(choice) {}
 
-            const std::vector<uint8_t>& addr_family() const { return m_addr_family; }
+            IPAddressFamily(
+               uint16_t afi,
+               uint8_t safi,
+               const std::variant<IPAddressChoice<Version::IPv4>, IPAddressChoice<Version::IPv6>>& choice) :
+                  m_afi(afi), m_safi(safi), m_ip_addr_choice(choice) {}
+
+            uint16_t afi() const { return m_afi; }
+
+            std::optional<uint8_t> safi() const { return m_safi; }
 
             const std::variant<IPAddressChoice<Version::IPv4>, IPAddressChoice<Version::IPv6>>& addr_choice() const {
                return m_ip_addr_choice;
             }
 
          private:
-            std::vector<uint8_t> m_addr_family;
+            uint16_t m_afi;
+            std::optional<uint8_t> m_safi;
             std::variant<IPAddressChoice<Version::IPv4>, IPAddressChoice<Version::IPv6>> m_ip_addr_choice;
       };
 
       IPAddressBlocks() = default;
+
+      IPAddressBlocks(std::vector<IPAddressFamily>& blocks) : m_ip_addr_blocks(blocks) {}
 
       std::unique_ptr<Certificate_Extension> copy() const override { return std::make_unique<IPAddressBlocks>(*this); }
 
@@ -660,8 +675,6 @@ class BOTAN_PUBLIC_API(3, 7) IPAddressBlocks final : public Certificate_Extensio
       OID oid_of() const override { return static_oid(); }
 
       const std::vector<IPAddressFamily>& addr_blocks() const { return m_ip_addr_blocks; }
-
-      void set_addr_blocks(const std::vector<IPAddressFamily>& addr_blocks) { m_ip_addr_blocks = addr_blocks; }
 
    private:
       std::string oid_name() const override { return "PKIX.ipAddrBlocks"; }

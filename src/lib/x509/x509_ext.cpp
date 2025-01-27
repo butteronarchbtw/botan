@@ -885,10 +885,6 @@ void ASBlocks::ASIdentifiers::encode_into(Botan::DER_Encoder& into) const {
 }
 
 void ASBlocks::ASIdentifiers::decode_from(Botan::BER_Decoder& from) {
-   //from.start_sequence()
-   //   .decode_optional(m_asnum, ASN1_Type(0), ASN1_Class::ExplicitContextSpecific)
-   //   .decode_optional(m_rdi, ASN1_Type(1), ASN1_Class::ExplicitContextSpecific)
-   //   .end_cons();
    BER_Object obj = from.get_next_object();
    ASN1_Type type_tag = obj.type_tag();
    if(type_tag != ASN1_Type::Sequence) {
@@ -1005,7 +1001,15 @@ void IPAddressBlocks::decode_inner(const std::vector<uint8_t>& in) {
 
 void IPAddressBlocks::IPAddressFamily::encode_into(Botan::DER_Encoder& into) const {
    into.start_sequence();
-   into.add_object(ASN1_Type::OctetString, ASN1_Class::Universal, this->m_addr_family);
+
+   std::vector<uint8_t> afam = {static_cast<uint8_t>(this->m_afi >> 8), static_cast<uint8_t>(this->m_afi & 0xff)};
+
+   if(this->m_safi.has_value()) {
+      afam.push_back(m_safi.value());
+   }
+
+   into.add_object(ASN1_Type::OctetString, ASN1_Class::Universal, afam);
+
    if(std::holds_alternative<IPAddressChoice<Version::IPv4>>(this->m_ip_addr_choice)) {
       auto ipv4_choice = std::get<IPAddressChoice<Version::IPv4>>(this->m_ip_addr_choice);
       into.encode(ipv4_choice);
@@ -1026,20 +1030,23 @@ void IPAddressBlocks::IPAddressFamily::decode_from(Botan::BER_Decoder& from) {
 
    std::vector<uint8_t> addr_family;
    obj_ber.decode(addr_family, ASN1_Type::OctetString);
-   m_addr_family = addr_family;
    size_t addr_family_length = addr_family.size();
 
-   //TODO: afi and safi
    if(addr_family_length != 2 && addr_family_length != 3) {
-      throw Decoding_Error("AFI/SAFI too long / too short.");
+      throw Decoding_Error("(S)AFI can only contain 2 or 3 bytes");
    }
-   uint16_t afi = (m_addr_family[0] << 8) | m_addr_family[1];
 
-   if(afi == 1) {
+   m_afi = (addr_family[0] << 8) | addr_family[1];
+
+   if(addr_family_length == 3) {
+      m_safi = addr_family[2];
+   }
+
+   if(m_afi == 1) {
       IPAddressChoice<Version::IPv4> addr_choice;
       obj_ber.decode(addr_choice);
       m_ip_addr_choice = addr_choice;
-   } else if(afi == 2) {
+   } else if(m_afi == 2) {
       IPAddressChoice<Version::IPv6> addr_choice;
       obj_ber.decode(addr_choice);
       m_ip_addr_choice = addr_choice;
@@ -1301,18 +1308,6 @@ IPAddressBlocks::IPAddress<V>::IPAddress(std::span<uint8_t> v) {
    for(size_t i = 0; i < version_octets; i++) {
       m_value[i] = v[i];
    }
-}
-
-IPAddressBlocks::IPAddressFamily::IPAddressFamily(
-   std::span<uint8_t> addr_family,
-   const std::variant<IPAddressChoice<Version::IPv4>, IPAddressChoice<Version::IPv6>>& choice) {
-   m_ip_addr_choice = choice;
-
-   if(addr_family.size() != 2 && addr_family.size() != 3) {
-      throw Decoding_Error("AFI/SAFI can only be 2 or 3 bytes long");
-   }
-
-   m_addr_family.assign(addr_family.begin(), addr_family.end());
 }
 
 template class IPAddressBlocks::IPAddress<IPAddressBlocks::Version::IPv4>;
