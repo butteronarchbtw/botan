@@ -1868,11 +1868,8 @@ Test::Result test_x509_ip_addr_blocks_extension_encode() {
          ipv6_addr_choice = IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv6>(ipv6_ranges);
       }
 
-      uint16_t afi = 1;
-      auto ipv4_addr_family = IPAddressBlocks::IPAddressFamily(afi, ipv4_addr_choice);
-
-      afi = 2;
-      auto ipv6_addr_family = IPAddressBlocks::IPAddressFamily(afi, ipv6_addr_choice);
+      auto ipv4_addr_family = IPAddressBlocks::IPAddressFamily(ipv4_addr_choice);
+      auto ipv6_addr_family = IPAddressBlocks::IPAddressFamily(ipv6_addr_choice);
 
       std::vector<IPAddressBlocks::IPAddressFamily> addr_blocks;
       if(push_ipv4_family) {
@@ -2000,7 +1997,7 @@ Test::Result test_x509_ip_addr_blocks_extension_encode_edge_cases() {
 
          auto ipv6_addr_choice = IPAddressBlocks::IPAddressChoice<IPAddressBlocks::Version::IPv6>(ipv6_ranges);
 
-         auto ipv6_addr_family = IPAddressBlocks::IPAddressFamily(2, ipv6_addr_choice);
+         auto ipv6_addr_family = IPAddressBlocks::IPAddressFamily(ipv6_addr_choice);
 
          std::vector<IPAddressBlocks::IPAddressFamily> addr_blocks;
          addr_blocks.push_back(ipv6_addr_family);

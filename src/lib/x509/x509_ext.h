@@ -639,16 +639,15 @@ class BOTAN_PUBLIC_API(3, 7) IPAddressBlocks final : public Certificate_Extensio
 
             IPAddressFamily() = default;
 
-            IPAddressFamily(
-               uint16_t afi,
-               const std::variant<IPAddressChoice<Version::IPv4>, IPAddressChoice<Version::IPv6>>& choice) :
-                  m_afi(afi), m_ip_addr_choice(choice) {}
-
-            IPAddressFamily(
-               uint16_t afi,
-               uint8_t safi,
-               const std::variant<IPAddressChoice<Version::IPv4>, IPAddressChoice<Version::IPv6>>& choice) :
-                  m_afi(afi), m_safi(safi), m_ip_addr_choice(choice) {}
+            IPAddressFamily(const std::variant<IPAddressChoice<Version::IPv4>, IPAddressChoice<Version::IPv6>>& choice,
+                            std::optional<uint8_t> safi = std::nullopt) :
+                  m_safi(safi), m_ip_addr_choice(choice) {
+               if(std::holds_alternative<IPAddressChoice<Version::IPv4>>(choice)) {
+                  m_afi = 1;
+               } else {
+                  m_afi = 2;
+               }
+            }
 
             uint16_t afi() const { return m_afi; }
 
